@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperfocus Universe</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #050612;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    #universe {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      cursor: grab;
+      perspective: 1000px;
+    }
+
+    #universe.dragging {
+      cursor: grabbing;
+    }
+
+    #camera {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transform-origin: center;
+      transition: transform 1.5s ease-in-out;
+    }
+
+    #world {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: url("universe.png");
+      background-size: 100% 100%;
+      background-position: center;
+      transform: scale(1.04);
+      transition: transform 0.2s ease-out;
+    }
+
+    .planet {
+      position: absolute;
+      width: 17%;
+      height: 31%;
+      border-radius: 50%;
+      background: transparent;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border 0.3s, box-shadow 0.3s;
+    }
+
+    .planet:hover {
+      border-color: rgba(255,255,255,0.7);
+      box-shadow: 0 0 35px rgba(255,255,255,0.25);
+    }
+
+    /* Positionen der sechs Planeten */
+    #productivity {
+      left: 5%;
+      top: 14%;
+    }
+
+    #learning {
+      left: 40%;
+      top: 5%;
+    }
+
+    #creative {
+      left: 75%;
+      top: 14%;
+    }
+
+    #wellness {
+      left: 5%;
+      top: 58%;
+    }
+
+    #life {
+      left: 40%;
+      top: 58%;
+    }
+
+    #entertainment {
+      left: 75%;
+      top: 58%;
+    }
+
+    #backButton {
+      position: fixed;
+      top: 25px;
+      left: 25px;
+      padding: 13px 22px;
+      background: rgba(15, 15, 35, 0.8);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+      display: none;
+      z-index: 10;
+    }
+
+    #planetName {
+      position: fixed;
+      bottom: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 25px;
+      text-shadow: 0 0 20px black;
+      display: none;
+      z-index: 10;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="universe">
+    <div id="camera">
+      <div id="world">
+
+        <button class="planet" id="productivity"
+          onclick="travel('Productivity Planet', 13, 29)">
+        </button>
+
+        <button class="planet" id="learning"
+          onclick="travel('Learning Planet', 48, 20)">
+        </button>
+
+        <button class="planet" id="creative"
+          onclick="travel('Creative Planet', 83, 29)">
+        </button>
+
+        <button class="planet" id="wellness"
+          onclick="travel('Wellness Planet', 13, 73)">
+        </button>
+
+        <button class="planet" id="life"
+          onclick="travel('Life Management Planet', 48, 73)">
+        </button>
+
+        <button class="planet" id="entertainment"
+          onclick="travel('Entertainment Planet', 83, 73)">
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <button id="backButton" onclick="goBack()">
+    ← Zurück ins Universum
+  </button>
+
+  <div id="planetName"></div>
+
+  <script>
+    const camera = document.getElementById("camera");
+    const world = document.getElementById("world");
+    const universe = document.getElementById("universe");
+    const backButton = document.getElementById("backButton");
+    const planetName = document.getElementById("planetName");
+
+    let zoom = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let travelling = false;
+
+    function updateCamera() {
+      camera.style.transform =
+        `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+    }
+
+    function travel(name, x, y) {
+      travelling = true;
+
+      zoom = 2.5;
+
+      offsetX = (50 - x) * window.innerWidth / 100 * zoom;
+      offsetY = (50 - y) * window.innerHeight / 100 * zoom;
+
+      updateCamera();
+
+      planetName.textContent = name;
+      planetName.style.display = "block";
+      backButton.style.display = "block";
+    }
+
+    function goBack() {
+      travelling = false;
+
+      zoom = 1;
+      offsetX = 0;
+      offsetY = 0;
+
+      updateCamera();
+
+      planetName.style.display = "none";
+      backButton.style.display = "none";
+    }
+
+    universe.addEventListener("mousedown", (e) => {
+      if (travelling) return;
+
+      dragging = true;
+      startX = e.clientX - offsetX;
+      startY = e.clientY - offsetY;
+
+      universe.classList.add("dragging");
+      camera.style.transition = "none";
+    });
+
+    window.addEventListener("mouseup", () => {
+      dragging = false;
+      universe.classList.remove("dragging");
+      camera.style.transition = "transform 1.5s ease-in-out";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (dragging) {
+        offsetX = e.clientX - startX;
+        offsetY = e.clientY - startY;
+        updateCamera();
+      } else if (!travelling) {
+        const x = (e.clientX / window.innerWidth - 0.5) * 8;
+        const y = (e.clientY / window.innerHeight - 0.5) * 8;
+
+        world.style.transform =
+          `scale(1.04) rotateY(${x}deg) rotateX(${-y}deg)`;
+      }
+    });
+
+    universe.addEventListener("wheel", (e) => {
+      if (travelling) return;
+
+      e.preventDefault();
+
+      zoom += e.deltaY * -0.001;
+      zoom = Math.max(1, Math.min(3, zoom));
+
+      camera.style.transition = "transform 0.2s ease-out";
+      updateCamera();
+    }, { passive: false });
+
+    updateCamera();
+  </script>
+
+</body>
+</html>
