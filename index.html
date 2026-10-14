@@ -6,80 +6,109 @@
 <title>Hyperfocus Universe 3D</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+  * {
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
-  overflow: hidden;
-  background: #030410;
-  color: white;
-  font-family: Arial, sans-serif;
-}
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #030410;
+    color: white;
+    font-family: Arial, sans-serif;
+  }
 
-canvas {
-  display: block;
-}
+  canvas {
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
 
-#ui {
-  position: fixed;
-  top: 25px;
-  left: 25px;
-  z-index: 10;
-  pointer-events: none;
-}
+  canvas:active {
+    cursor: grabbing;
+  }
 
-#title {
-  font-size: 24px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-shadow: 0 0 20px #8a7dff;
-}
+  #ui {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 10;
+    pointer-events: none;
+  }
 
-#subtitle {
-  margin-top: 8px;
-  color: #c4c2df;
-  font-size: 13px;
-}
+  #title {
+    font-size: clamp(17px, 2.5vw, 25px);
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px #8a7dff;
+  }
 
-#back {
-  position: fixed;
-  top: 25px;
-  right: 25px;
-  z-index: 20;
-  display: none;
-  padding: 13px 20px;
-  border: 1px solid #777;
-  border-radius: 12px;
-  background: rgba(12, 12, 35, .85);
-  color: white;
-  cursor: pointer;
-}
+  #subtitle {
+    margin-top: 8px;
+    color: #c4c2df;
+    font-size: 13px;
+  }
 
-#planetInfo {
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  display: none;
-  padding: 15px 25px;
-  border-radius: 15px;
-  background: rgba(12, 12, 35, .8);
-  text-align: center;
-  font-size: 22px;
-}
+  #back {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 20;
+    display: none;
+    padding: 13px 20px;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 12px;
+    background: rgba(12,12,35,0.85);
+    color: white;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+  }
 
-#hint {
-  position: fixed;
-  bottom: 18px;
-  width: 100%;
-  text-align: center;
-  color: #aaa9cb;
-  font-size: 12px;
-  pointer-events: none;
-}
+  #back:hover {
+    background: rgba(45,40,85,0.95);
+  }
+
+  #planetInfo {
+    position: fixed;
+    bottom: 45px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: none;
+    padding: 14px 24px;
+    border-radius: 15px;
+    background: rgba(12,12,35,0.8);
+    backdrop-filter: blur(12px);
+    text-align: center;
+    font-size: clamp(17px, 2.5vw, 23px);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  #hint {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 95%;
+    text-align: center;
+    color: #aaa9cb;
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  #error {
+    position: fixed;
+    inset: 20%;
+    display: none;
+    place-items: center;
+    text-align: center;
+    color: white;
+    z-index: 30;
+  }
 </style>
 </head>
 
@@ -90,18 +119,28 @@ canvas {
   <div id="subtitle">Explore your worlds</div>
 </div>
 
-<button id="back">← Zurück ins Universum</button>
+<button id="back" type="button">
+  ← Zurück ins Universum
+</button>
 
-<div id="planetInfo"></div>
+<div id="planetInfo" aria-live="polite"></div>
 
 <div id="hint">
-  🖱️ Planet anklicken · Mausrad zum Zoomen
+  🖱️ Planeten anklicken · Ziehen zum Drehen · Mausrad zum Zoomen
+</div>
+
+<div id="error">
+  Die 3D-Grafik konnte nicht geladen werden.
 </div>
 
 <script type="module">
 
 import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";
+  "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";
+
+/* ==================================================
+   GRUNDLAGEN
+================================================== */
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x030410);
@@ -113,101 +152,319 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 0, 38);
+camera.position.set(0, 0, 42);
 
 const renderer = new THREE.WebGLRenderer({
-  antialias: true
+  antialias: true,
+  alpha: false
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio, 2)
+);
+
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
 document.body.appendChild(renderer.domElement);
 
-/* LICHT */
+/* ==================================================
+   LICHT
+================================================== */
 
-scene.add(new THREE.AmbientLight(0x8888bb, 2));
+scene.add(
+  new THREE.AmbientLight(0x9ca8ff, 1.7)
+);
 
-const light = new THREE.PointLight(0xffffff, 1000);
-light.position.set(10, 15, 20);
-scene.add(light);
+const sunlight = new THREE.DirectionalLight(
+  0xffffff,
+  3.2
+);
 
-/* STERNE */
+sunlight.position.set(12, 18, 25);
+scene.add(sunlight);
+
+const blueLight = new THREE.PointLight(
+  0x6688ff,
+  120
+);
+
+blueLight.position.set(-15, -10, 12);
+scene.add(blueLight);
+
+/* ==================================================
+   STERNE
+================================================== */
 
 const starGeometry = new THREE.BufferGeometry();
 const starPositions = [];
 
-for (let i = 0; i < 1800; i++) {
+for (let i = 0; i < 2200; i++) {
   starPositions.push(
-    (Math.random() - 0.5) * 220,
-    (Math.random() - 0.5) * 140,
-    -20 - Math.random() * 120
+    (Math.random() - 0.5) * 240,
+    (Math.random() - 0.5) * 160,
+    -25 - Math.random() * 150
   );
 }
 
 starGeometry.setAttribute(
   "position",
-  new THREE.Float32BufferAttribute(starPositions, 3)
+  new THREE.Float32BufferAttribute(
+    starPositions,
+    3
+  )
 );
 
 const stars = new THREE.Points(
   starGeometry,
   new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.12,
+    color: 0xe4eaff,
+    size: 0.13,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.85,
+    sizeAttenuation: true
   })
 );
 
 scene.add(stars);
 
-/* PLANETEN */
+/* ==================================================
+   PLANETEN
+================================================== */
 
 const planets = [];
+const planetMeshes = [];
 
 function createPlanet(name, color, x, y, size) {
 
-  const geometry = new THREE.SphereGeometry(
-    size, 64, 64
-  );
+  const group = new THREE.Group();
+  group.position.set(x, y, 0);
 
   const material = new THREE.MeshStandardMaterial({
-    color: color,
+    color,
     roughness: 0.65,
     metalness: 0.15
   });
 
-  const planet = new THREE.Mesh(geometry, material);
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 64, 64),
+    material
+  );
 
-  planet.position.set(x, y, 0);
-  planet.userData.name = name;
-  planet.userData.size = size;
+  sphere.userData.planetGroup = group;
+  group.add(sphere);
 
-  scene.add(planet);
-  planets.push(planet);
-
-  /* Atmosphäre */
-
-  const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(size * 1.12, 48, 48),
+  const atmosphere = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      size * 1.08,
+      48,
+      48
+    ),
     new THREE.MeshBasicMaterial({
-      color: color,
+      color,
       transparent: true,
-      opacity: 0.10,
+      opacity: 0.09,
       depthWrite: false
     })
   );
 
-  planet.add(glow);
+  group.add(atmosphere);
 
-  return planet;
+  group.userData = {
+    name,
+    size,
+    sphere
+  };
+
+  scene.add(group);
+
+  planets.push(group);
+  planetMeshes.push(sphere);
+
+  return group;
 }
 
-createPlanet(
+/* ==================================================
+   PRODUCTIVITY PLANET
+================================================== */
+
+const productivity = createPlanet(
   "Productivity Planet",
   0x80dfff,
   -12, 7, 3.2
 );
+
+const productivitySphere =
+  productivity.userData.sphere;
+
+productivitySphere.material.roughness = 0.35;
+productivitySphere.material.metalness = 0.45;
+
+/* Energieringe */
+
+function createEnergyRing(
+  parent,
+  radius,
+  color,
+  tilt
+) {
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(
+      radius,
+      0.035,
+      12,
+      120
+    ),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false
+    })
+  );
+
+  ring.rotation.x = tilt;
+  parent.add(ring);
+
+  return ring;
+}
+
+const productivityRing1 = createEnergyRing(
+  productivity,
+  4.2,
+  0x8ffaff,
+  1.1
+);
+
+const productivityRing2 = createEnergyRing(
+  productivity,
+  4.6,
+  0xbbaaff,
+  1.35
+);
+
+/* Futuristische Türme */
+
+function createTower(
+  parent,
+  radius,
+  latitude,
+  longitude,
+  height
+) {
+
+  const direction = new THREE.Vector3(
+    Math.cos(latitude) * Math.cos(longitude),
+    Math.sin(latitude),
+    Math.cos(latitude) * Math.sin(longitude)
+  ).normalize();
+
+  const towerGroup = new THREE.Group();
+
+  towerGroup.position.copy(
+    direction.clone().multiplyScalar(radius)
+  );
+
+  towerGroup.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    direction
+  );
+
+  const tower = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      0.13,
+      0.25,
+      height,
+      6
+    ),
+    new THREE.MeshStandardMaterial({
+      color: 0xc5eeff,
+      metalness: 0.75,
+      roughness: 0.18,
+      emissive: 0x124466,
+      emissiveIntensity: 0.3
+    })
+  );
+
+  tower.position.y = height / 2;
+  towerGroup.add(tower);
+
+  const crystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.22),
+    new THREE.MeshStandardMaterial({
+      color: 0xaaddff,
+      emissive: 0x66ddff,
+      emissiveIntensity: 1.5,
+      metalness: 0.3,
+      roughness: 0.15
+    })
+  );
+
+  crystal.position.y = height + 0.15;
+  towerGroup.add(crystal);
+
+  parent.add(towerGroup);
+
+  return towerGroup;
+}
+
+createTower(productivity, 3.2, 0.8, 0.2, 1.1);
+createTower(productivity, 3.2, 0.6, 0.6, 1.6);
+createTower(productivity, 3.2, 0.9, 1.0, 0.9);
+createTower(productivity, 3.2, 0.4, 1.4, 1.3);
+createTower(productivity, 3.2, 1.1, 1.8, 0.8);
+createTower(productivity, 3.2, 0.7, 2.3, 1.5);
+createTower(productivity, 3.2, 0.5, 2.8, 1.0);
+createTower(productivity, 3.2, 1.0, 3.2, 1.2);
+
+/* Schwebende Kristalle */
+
+const floatingCrystals = [];
+
+function createFloatingCrystal(
+  parent,
+  x,
+  y,
+  z,
+  size
+) {
+
+  const crystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(size),
+    new THREE.MeshStandardMaterial({
+      color: 0xc8aaff,
+      emissive: 0x6644ff,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.9
+    })
+  );
+
+  crystal.position.set(x, y, z);
+  crystal.userData.baseY = y;
+
+  parent.add(crystal);
+  floatingCrystals.push(crystal);
+
+  return crystal;
+}
+
+createFloatingCrystal(
+  productivity, 0, 4.3, 0, 0.25
+);
+
+createFloatingCrystal(
+  productivity, 2.8, 2.9, 1.5, 0.18
+);
+
+createFloatingCrystal(
+  productivity, -2.5, 3.1, 1.8, 0.22
+);
+
+/* ==================================================
+   ANDERE FÜNF PLANETEN
+================================================== */
 
 createPlanet(
   "Learning Planet",
@@ -239,19 +496,39 @@ createPlanet(
   12, -7, 3.2
 );
 
-/* KAMERASTEUERUNG */
+/* ==================================================
+   KAMERA
+================================================== */
 
 const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+const pointer = new THREE.Vector2();
 
-const targetPosition = new THREE.Vector3(0, 0, 38);
-const targetLookAt = new THREE.Vector3(0, 0, 0);
-const currentLookAt = new THREE.Vector3(0, 0, 0);
+const targetPosition = new THREE.Vector3(
+  0, 0, 42
+);
+
+const targetLookAt = new THREE.Vector3(
+  0, 0, 0
+);
+
+const currentLookAt = new THREE.Vector3(
+  0, 0, 0
+);
 
 let selectedPlanet = null;
+let dragging = false;
+let moved = false;
 
-const backButton = document.getElementById("back");
-const planetInfo = document.getElementById("planetInfo");
+let startX = 0;
+let startY = 0;
+
+const backButton =
+  document.getElementById("back");
+
+const planetInfo =
+  document.getElementById("planetInfo");
+
+/* Planetenreise */
 
 function selectPlanet(planet) {
 
@@ -262,21 +539,25 @@ function selectPlanet(planet) {
   targetPosition.set(
     planet.position.x,
     planet.position.y,
-    size * 3.4
+    size * 3.8
   );
 
   targetLookAt.copy(planet.position);
 
-  planetInfo.textContent = planet.userData.name;
+  planetInfo.textContent =
+    planet.userData.name;
+
   planetInfo.style.display = "block";
   backButton.style.display = "block";
 }
+
+/* Zurück zur Übersicht */
 
 function goBack() {
 
   selectedPlanet = null;
 
-  targetPosition.set(0, 0, 38);
+  targetPosition.set(0, 0, 42);
   targetLookAt.set(0, 0, 0);
 
   planetInfo.style.display = "none";
@@ -285,43 +566,102 @@ function goBack() {
 
 backButton.addEventListener("click", goBack);
 
-/* PLANETEN ANKLICKEN */
+/* ==================================================
+   MAUSSTEUERUNG
+================================================== */
 
-renderer.domElement.addEventListener("click", event => {
+renderer.domElement.addEventListener(
+  "pointerdown",
+  event => {
 
-  if (selectedPlanet) return;
+    dragging = true;
+    moved = false;
 
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-
-  const intersects = raycaster.intersectObjects(planets);
-
-  if (intersects.length > 0) {
-    selectPlanet(intersects[0].object);
+    startX = event.clientX;
+    startY = event.clientY;
   }
-});
+);
 
-/* ZOOM */
+renderer.domElement.addEventListener(
+  "pointermove",
+  event => {
 
-renderer.domElement.addEventListener("wheel", event => {
+    if (!dragging) return;
 
-  event.preventDefault();
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
 
-  if (selectedPlanet) return;
+    if (Math.abs(dx) + Math.abs(dy) > 6) {
+      moved = true;
+    }
+  }
+);
 
-  targetPosition.z += event.deltaY * 0.02;
+renderer.domElement.addEventListener(
+  "pointerup",
+  event => {
 
-  targetPosition.z = THREE.MathUtils.clamp(
-    targetPosition.z,
-    25,
-    65
-  );
+    if (!dragging) return;
 
-}, { passive: false });
+    dragging = false;
 
-/* ANIMATION */
+    if (moved || selectedPlanet) return;
+
+    const rect =
+      renderer.domElement.getBoundingClientRect();
+
+    pointer.x =
+      ((event.clientX - rect.left) / rect.width) * 2 - 1;
+
+    pointer.y =
+      -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(pointer, camera);
+
+    const intersects =
+      raycaster.intersectObjects(planetMeshes);
+
+    if (intersects.length > 0) {
+
+      const planet =
+        intersects[0].object.userData.planetGroup;
+
+      selectPlanet(planet);
+    }
+  }
+);
+
+renderer.domElement.addEventListener(
+  "pointercancel",
+  () => {
+    dragging = false;
+  }
+);
+
+/* Zoom */
+
+renderer.domElement.addEventListener(
+  "wheel",
+  event => {
+
+    event.preventDefault();
+
+    if (selectedPlanet) return;
+
+    targetPosition.z += event.deltaY * 0.02;
+
+    targetPosition.z = THREE.MathUtils.clamp(
+      targetPosition.z,
+      30,
+      65
+    );
+  },
+  { passive: false }
+);
+
+/* ==================================================
+   ANIMATION
+================================================== */
 
 const clock = new THREE.Clock();
 
@@ -329,18 +669,57 @@ function animate() {
 
   requestAnimationFrame(animate);
 
-  const delta = Math.min(clock.getDelta(), 0.05);
-  const smoothing = 1 - Math.exp(-3 * delta);
+  const delta = Math.min(
+    clock.getDelta(),
+    0.05
+  );
+
+  const elapsed = clock.elapsedTime;
+
+  const smoothing =
+    1 - Math.exp(-3 * delta);
+
+  /* Planetenrotation */
 
   planets.forEach(planet => {
     planet.rotation.y += delta * 0.12;
   });
 
+  /* Bewegte Energieringe */
+
+  productivityRing1.rotation.z +=
+    delta * 0.035;
+
+  productivityRing2.rotation.z -=
+    delta * 0.025;
+
+  /* Schwebende Kristalle */
+
+  floatingCrystals.forEach((crystal, index) => {
+
+    crystal.rotation.y += delta * 0.5;
+
+    crystal.position.y =
+      crystal.userData.baseY +
+      Math.sin(elapsed * 0.8 + index) * 0.08;
+  });
+
+  /* Sterne */
+
   stars.rotation.y += delta * 0.001;
 
-  camera.position.lerp(targetPosition, smoothing);
+  /* Sanfte Kamerafahrt */
 
-  currentLookAt.lerp(targetLookAt, smoothing);
+  camera.position.lerp(
+    targetPosition,
+    smoothing
+  );
+
+  currentLookAt.lerp(
+    targetLookAt,
+    smoothing
+  );
+
   camera.lookAt(currentLookAt);
 
   renderer.render(scene, camera);
@@ -348,16 +727,24 @@ function animate() {
 
 animate();
 
-/* FENSTERGRÖSSE */
+/* ==================================================
+   RESPONSIVE DARSTELLUNG
+================================================== */
 
 window.addEventListener("resize", () => {
 
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect =
+    window.innerWidth / window.innerHeight;
+
   camera.updateProjectionMatrix();
 
   renderer.setSize(
     window.innerWidth,
     window.innerHeight
+  );
+
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
   );
 });
 
