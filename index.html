@@ -10,8 +10,10 @@
       box-sizing: border-box;
     }
 
-    body {
+    html, body {
       margin: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: #050612;
       font-family: Arial, sans-serif;
@@ -23,7 +25,8 @@
       inset: 0;
       overflow: hidden;
       cursor: grab;
-      perspective: 1000px;
+      touch-action: none;
+      perspective: 1200px;
     }
 
     #universe.dragging {
@@ -32,40 +35,58 @@
 
     #camera {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      transform-origin: center;
-      transition: transform 1.5s ease-in-out;
+      inset: 0;
+      transform-origin: center center;
+      transition: transform 1.6s cubic-bezier(.22, 1, .36, 1);
+      will-change: transform;
     }
 
     #world {
       position: absolute;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       background-image: url("universe.png");
-      background-size: 100% 100%;
       background-position: center;
-      transform: scale(1.04);
-      transition: transform 0.2s ease-out;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      transform-origin: center;
+      will-change: transform;
     }
+
+    /* Unsichtbare Klickflächen */
 
     .planet {
       position: absolute;
       width: 17%;
       height: 31%;
+      padding: 0;
+      border: none;
       border-radius: 50%;
       background: transparent;
-      border: 2px solid transparent;
+      box-shadow: none;
+      outline: none;
+      appearance: none;
       cursor: pointer;
-      transition: border 0.3s, box-shadow 0.3s;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .planet:hover {
-      border-color: rgba(255,255,255,0.7);
-      box-shadow: 0 0 35px rgba(255,255,255,0.25);
+    /* Keine Kreise beim Darüberfahren */
+
+    .planet:hover,
+    .planet:active {
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    /* Fokusmarkierung nur bei Tastaturbedienung */
+
+    .planet:focus-visible {
+      outline: 2px dashed rgba(255,255,255,.85);
+      outline-offset: 4px;
     }
 
     /* Positionen der sechs Planeten */
+
     #productivity {
       left: 5%;
       top: 14%;
@@ -96,31 +117,72 @@
       top: 58%;
     }
 
+    /* Bedienelemente */
+
     #backButton {
       position: fixed;
-      top: 25px;
-      left: 25px;
-      padding: 13px 22px;
-      background: rgba(15, 15, 35, 0.8);
-      border: 1px solid rgba(255,255,255,0.3);
+      top: 24px;
+      left: 24px;
+      z-index: 20;
+
+      display: none;
+      padding: 13px 20px;
+
+      background: rgba(12, 12, 30, .85);
+      border: 1px solid rgba(255,255,255,.3);
       border-radius: 12px;
+
       color: white;
       font-size: 15px;
       cursor: pointer;
-      display: none;
-      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    #backButton:hover {
+      background: rgba(40, 35, 75, .95);
     }
 
     #planetName {
       position: fixed;
       bottom: 35px;
       left: 50%;
-      transform: translateX(-50%);
-      font-size: 25px;
-      text-shadow: 0 0 20px black;
+      z-index: 20;
+
       display: none;
-      z-index: 10;
+      transform: translateX(-50%);
+
+      padding: 12px 22px;
+      border-radius: 14px;
+      background: rgba(10, 10, 30, .65);
+      backdrop-filter: blur(10px);
+
+      font-size: clamp(17px, 3vw, 25px);
       text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    #hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      z-index: 10;
+
+      transform: translateX(-50%);
+      padding: 9px 15px;
+      border-radius: 12px;
+
+      background: rgba(10, 10, 30, .55);
+      color: rgba(255,255,255,.85);
+      font-size: 12px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #camera {
+        transition-duration: .01ms;
+      }
     }
   </style>
 </head>
@@ -131,77 +193,145 @@
     <div id="camera">
       <div id="world">
 
-        <button class="planet" id="productivity"
-          onclick="travel('Productivity Planet', 13, 29)">
+        <button
+          class="planet"
+          id="productivity"
+          data-name="Productivity Planet"
+          data-x="13"
+          data-y="29"
+          aria-label="Productivity Planet öffnen">
         </button>
 
-        <button class="planet" id="learning"
-          onclick="travel('Learning Planet', 48, 20)">
+        <button
+          class="planet"
+          id="learning"
+          data-name="Learning Planet"
+          data-x="48"
+          data-y="20"
+          aria-label="Learning Planet öffnen">
         </button>
 
-        <button class="planet" id="creative"
-          onclick="travel('Creative Planet', 83, 29)">
+        <button
+          class="planet"
+          id="creative"
+          data-name="Creative Planet"
+          data-x="83"
+          data-y="29"
+          aria-label="Creative Planet öffnen">
         </button>
 
-        <button class="planet" id="wellness"
-          onclick="travel('Wellness Planet', 13, 73)">
+        <button
+          class="planet"
+          id="wellness"
+          data-name="Wellness Planet"
+          data-x="13"
+          data-y="73"
+          aria-label="Wellness Planet öffnen">
         </button>
 
-        <button class="planet" id="life"
-          onclick="travel('Life Management Planet', 48, 73)">
+        <button
+          class="planet"
+          id="life"
+          data-name="Life Management Planet"
+          data-x="48"
+          data-y="73"
+          aria-label="Life Management Planet öffnen">
         </button>
 
-        <button class="planet" id="entertainment"
-          onclick="travel('Entertainment Planet', 83, 73)">
+        <button
+          class="planet"
+          id="entertainment"
+          data-name="Entertainment Planet"
+          data-x="83"
+          data-y="73"
+          aria-label="Entertainment Planet öffnen">
         </button>
 
       </div>
     </div>
   </div>
 
-  <button id="backButton" onclick="goBack()">
+  <button id="backButton" type="button">
     ← Zurück ins Universum
   </button>
 
-  <div id="planetName"></div>
+  <div id="planetName" aria-live="polite"></div>
+
+  <div id="hint">
+    🖱️ Ziehen zum Bewegen · Mausrad zum Zoomen · Planeten anklicken
+  </div>
 
   <script>
+    const universe = document.getElementById("universe");
     const camera = document.getElementById("camera");
     const world = document.getElementById("world");
-    const universe = document.getElementById("universe");
     const backButton = document.getElementById("backButton");
     const planetName = document.getElementById("planetName");
+    const hint = document.getElementById("hint");
+
+    const planets = document.querySelectorAll(".planet");
 
     let zoom = 1;
     let offsetX = 0;
     let offsetY = 0;
+
+    let travelling = false;
     let dragging = false;
+    let moved = false;
+
     let startX = 0;
     let startY = 0;
-    let travelling = false;
+    let initialX = 0;
+    let initialY = 0;
+
+    let activePointer = null;
+    let suppressClick = false;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
 
     function updateCamera() {
       camera.style.transform =
-        `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+        `translate3d(${offsetX}px, ${offsetY}px, 0) scale(${zoom})`;
+    }
+
+    function enableSmoothMovement() {
+      camera.style.transition = reducedMotion.matches
+        ? "none"
+        : "transform 1.6s cubic-bezier(.22, 1, .36, 1)";
     }
 
     function travel(name, x, y) {
+      if (travelling) return;
+
       travelling = true;
+      dragging = false;
+
+      enableSmoothMovement();
+
+      const rect = universe.getBoundingClientRect();
 
       zoom = 2.5;
 
-      offsetX = (50 - x) * window.innerWidth / 100 * zoom;
-      offsetY = (50 - y) * window.innerHeight / 100 * zoom;
+      offsetX = (50 - x) / 100 * rect.width * zoom;
+      offsetY = (50 - y) / 100 * rect.height * zoom;
+
+      world.style.transform = "none";
 
       updateCamera();
 
       planetName.textContent = name;
       planetName.style.display = "block";
+
       backButton.style.display = "block";
+      hint.style.display = "none";
     }
 
     function goBack() {
       travelling = false;
+
+      enableSmoothMovement();
 
       zoom = 1;
       offsetX = 0;
@@ -211,48 +341,128 @@
 
       planetName.style.display = "none";
       backButton.style.display = "none";
+      hint.style.display = "block";
     }
 
-    universe.addEventListener("mousedown", (e) => {
-      if (travelling) return;
+    planets.forEach(planet => {
+      planet.addEventListener("click", event => {
+        if (suppressClick || moved || travelling) {
+          event.preventDefault();
+          return;
+        }
 
+        const name = planet.dataset.name;
+        const x = Number(planet.dataset.x);
+        const y = Number(planet.dataset.y);
+
+        travel(name, x, y);
+      });
+    });
+
+    backButton.addEventListener("click", goBack);
+
+    universe.addEventListener("pointerdown", event => {
+      if (travelling || event.button !== 0) return;
+
+      activePointer = event.pointerId;
       dragging = true;
-      startX = e.clientX - offsetX;
-      startY = e.clientY - offsetY;
+      moved = false;
 
-      universe.classList.add("dragging");
+      startX = event.clientX;
+      startY = event.clientY;
+
+      initialX = offsetX;
+      initialY = offsetY;
+
       camera.style.transition = "none";
     });
 
-    window.addEventListener("mouseup", () => {
-      dragging = false;
-      universe.classList.remove("dragging");
-      camera.style.transition = "transform 1.5s ease-in-out";
-    });
+    window.addEventListener("pointermove", event => {
+      if (
+        dragging &&
+        event.pointerId === activePointer
+      ) {
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
 
-    window.addEventListener("mousemove", (e) => {
-      if (dragging) {
-        offsetX = e.clientX - startX;
-        offsetY = e.clientY - startY;
-        updateCamera();
-      } else if (!travelling) {
-        const x = (e.clientX / window.innerWidth - 0.5) * 8;
-        const y = (e.clientY / window.innerHeight - 0.5) * 8;
+        if (Math.hypot(dx, dy) > 6) {
+          moved = true;
+          suppressClick = true;
+          universe.classList.add("dragging");
+        }
 
-        world.style.transform =
-          `scale(1.04) rotateY(${x}deg) rotateX(${-y}deg)`;
+        if (moved) {
+          offsetX = initialX + dx;
+          offsetY = initialY + dy;
+
+          updateCamera();
+        }
+
+        return;
       }
+
+      if (travelling || dragging || reducedMotion.matches) {
+        return;
+      }
+
+      const rect = universe.getBoundingClientRect();
+
+      const mouseX =
+        (event.clientX - rect.left) / rect.width - 0.5;
+
+      const mouseY =
+        (event.clientY - rect.top) / rect.height - 0.5;
+
+      const rotateY = mouseX * 2;
+      const rotateX = -mouseY * 2;
+
+      world.style.transform =
+        `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
     });
 
-    universe.addEventListener("wheel", (e) => {
+    function stopDragging(event) {
+      if (
+        !dragging ||
+        event.pointerId !== activePointer
+      ) {
+        return;
+      }
+
+      dragging = false;
+      activePointer = null;
+
+      universe.classList.remove("dragging");
+
+      enableSmoothMovement();
+
+      if (moved) {
+        suppressClick = true;
+
+        setTimeout(() => {
+          suppressClick = false;
+          moved = false;
+        }, 100);
+      }
+    }
+
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    universe.addEventListener("wheel", event => {
       if (travelling) return;
 
-      e.preventDefault();
+      event.preventDefault();
 
-      zoom += e.deltaY * -0.001;
-      zoom = Math.max(1, Math.min(3, zoom));
+      const change = -event.deltaY * 0.001;
 
-      camera.style.transition = "transform 0.2s ease-out";
+      zoom = Math.max(
+        1,
+        Math.min(3, zoom + change)
+      );
+
+      camera.style.transition =
+        "transform .2s ease-out";
+
       updateCamera();
     }, { passive: false });
 
