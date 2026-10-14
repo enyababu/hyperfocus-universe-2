@@ -1,473 +1,366 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperfocus Universe</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperfocus Universe 3D</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+* {
+  box-sizing: border-box;
+}
 
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #050612;
-      font-family: Arial, sans-serif;
-      color: white;
-    }
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #030410;
+  color: white;
+  font-family: Arial, sans-serif;
+}
 
-    #universe {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      cursor: grab;
-      touch-action: none;
-      perspective: 1200px;
-    }
+canvas {
+  display: block;
+}
 
-    #universe.dragging {
-      cursor: grabbing;
-    }
+#ui {
+  position: fixed;
+  top: 25px;
+  left: 25px;
+  z-index: 10;
+  pointer-events: none;
+}
 
-    #camera {
-      position: absolute;
-      inset: 0;
-      transform-origin: center center;
-      transition: transform 1.6s cubic-bezier(.22, 1, .36, 1);
-      will-change: transform;
-    }
+#title {
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px #8a7dff;
+}
 
-    #world {
-      position: absolute;
-      inset: 0;
-      background-image: url("universe.png");
-      background-position: center;
-      background-size: 100% 100%;
-      background-repeat: no-repeat;
-      transform-origin: center;
-      will-change: transform;
-    }
+#subtitle {
+  margin-top: 8px;
+  color: #c4c2df;
+  font-size: 13px;
+}
 
-    /* Unsichtbare Klickflächen */
+#back {
+  position: fixed;
+  top: 25px;
+  right: 25px;
+  z-index: 20;
+  display: none;
+  padding: 13px 20px;
+  border: 1px solid #777;
+  border-radius: 12px;
+  background: rgba(12, 12, 35, .85);
+  color: white;
+  cursor: pointer;
+}
 
-    .planet {
-      position: absolute;
-      width: 17%;
-      height: 31%;
-      padding: 0;
-      border: none;
-      border-radius: 50%;
-      background: transparent;
-      box-shadow: none;
-      outline: none;
-      appearance: none;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
+#planetInfo {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: none;
+  padding: 15px 25px;
+  border-radius: 15px;
+  background: rgba(12, 12, 35, .8);
+  text-align: center;
+  font-size: 22px;
+}
 
-    /* Keine Kreise beim Darüberfahren */
-
-    .planet:hover,
-    .planet:active {
-      border: none;
-      background: transparent;
-      box-shadow: none;
-    }
-
-    /* Fokusmarkierung nur bei Tastaturbedienung */
-
-    .planet:focus-visible {
-      outline: 2px dashed rgba(255,255,255,.85);
-      outline-offset: 4px;
-    }
-
-    /* Positionen der sechs Planeten */
-
-    #productivity {
-      left: 5%;
-      top: 14%;
-    }
-
-    #learning {
-      left: 40%;
-      top: 5%;
-    }
-
-    #creative {
-      left: 75%;
-      top: 14%;
-    }
-
-    #wellness {
-      left: 5%;
-      top: 58%;
-    }
-
-    #life {
-      left: 40%;
-      top: 58%;
-    }
-
-    #entertainment {
-      left: 75%;
-      top: 58%;
-    }
-
-    /* Bedienelemente */
-
-    #backButton {
-      position: fixed;
-      top: 24px;
-      left: 24px;
-      z-index: 20;
-
-      display: none;
-      padding: 13px 20px;
-
-      background: rgba(12, 12, 30, .85);
-      border: 1px solid rgba(255,255,255,.3);
-      border-radius: 12px;
-
-      color: white;
-      font-size: 15px;
-      cursor: pointer;
-      backdrop-filter: blur(12px);
-    }
-
-    #backButton:hover {
-      background: rgba(40, 35, 75, .95);
-    }
-
-    #planetName {
-      position: fixed;
-      bottom: 35px;
-      left: 50%;
-      z-index: 20;
-
-      display: none;
-      transform: translateX(-50%);
-
-      padding: 12px 22px;
-      border-radius: 14px;
-      background: rgba(10, 10, 30, .65);
-      backdrop-filter: blur(10px);
-
-      font-size: clamp(17px, 3vw, 25px);
-      text-align: center;
-      white-space: nowrap;
-      pointer-events: none;
-    }
-
-    #hint {
-      position: fixed;
-      bottom: 18px;
-      left: 50%;
-      z-index: 10;
-
-      transform: translateX(-50%);
-      padding: 9px 15px;
-      border-radius: 12px;
-
-      background: rgba(10, 10, 30, .55);
-      color: rgba(255,255,255,.85);
-      font-size: 12px;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      #camera {
-        transition-duration: .01ms;
-      }
-    }
-  </style>
+#hint {
+  position: fixed;
+  bottom: 18px;
+  width: 100%;
+  text-align: center;
+  color: #aaa9cb;
+  font-size: 12px;
+  pointer-events: none;
+}
+</style>
 </head>
 
 <body>
 
-  <div id="universe">
-    <div id="camera">
-      <div id="world">
-
-        <button
-          class="planet"
-          id="productivity"
-          data-name="Productivity Planet"
-          data-x="13"
-          data-y="29"
-          aria-label="Productivity Planet öffnen">
-        </button>
-
-        <button
-          class="planet"
-          id="learning"
-          data-name="Learning Planet"
-          data-x="48"
-          data-y="20"
-          aria-label="Learning Planet öffnen">
-        </button>
-
-        <button
-          class="planet"
-          id="creative"
-          data-name="Creative Planet"
-          data-x="83"
-          data-y="29"
-          aria-label="Creative Planet öffnen">
-        </button>
-
-        <button
-          class="planet"
-          id="wellness"
-          data-name="Wellness Planet"
-          data-x="13"
-          data-y="73"
-          aria-label="Wellness Planet öffnen">
-        </button>
-
-        <button
-          class="planet"
-          id="life"
-          data-name="Life Management Planet"
-          data-x="48"
-          data-y="73"
-          aria-label="Life Management Planet öffnen">
-        </button>
-
-        <button
-          class="planet"
-          id="entertainment"
-          data-name="Entertainment Planet"
-          data-x="83"
-          data-y="73"
-          aria-label="Entertainment Planet öffnen">
-        </button>
-
-      </div>
-    </div>
-  </div>
-
-  <button id="backButton" type="button">
-    ← Zurück ins Universum
-  </button>
-
-  <div id="planetName" aria-live="polite"></div>
-
-  <div id="hint">
-    🖱️ Ziehen zum Bewegen · Mausrad zum Zoomen · Planeten anklicken
-  </div>
-
-  <script>
-    const universe = document.getElementById("universe");
-    const camera = document.getElementById("camera");
-    const world = document.getElementById("world");
-    const backButton = document.getElementById("backButton");
-    const planetName = document.getElementById("planetName");
-    const hint = document.getElementById("hint");
-
-    const planets = document.querySelectorAll(".planet");
-
-    let zoom = 1;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    let travelling = false;
-    let dragging = false;
-    let moved = false;
-
-    let startX = 0;
-    let startY = 0;
-    let initialX = 0;
-    let initialY = 0;
-
-    let activePointer = null;
-    let suppressClick = false;
-
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    );
+<div id="ui">
+  <div id="title">HYPERFOCUS UNIVERSE</div>
+  <div id="subtitle">Explore your worlds</div>
+</div>
 
-    function updateCamera() {
-      camera.style.transform =
-        `translate3d(${offsetX}px, ${offsetY}px, 0) scale(${zoom})`;
-    }
+<button id="back">← Zurück ins Universum</button>
 
-    function enableSmoothMovement() {
-      camera.style.transition = reducedMotion.matches
-        ? "none"
-        : "transform 1.6s cubic-bezier(.22, 1, .36, 1)";
-    }
+<div id="planetInfo"></div>
 
-    function travel(name, x, y) {
-      if (travelling) return;
+<div id="hint">
+  🖱️ Planet anklicken · Mausrad zum Zoomen
+</div>
 
-      travelling = true;
-      dragging = false;
+<script type="module">
 
-      enableSmoothMovement();
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";
 
-      const rect = universe.getBoundingClientRect();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x030410);
 
-      zoom = 2.5;
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
 
-      offsetX = (50 - x) / 100 * rect.width * zoom;
-      offsetY = (50 - y) / 100 * rect.height * zoom;
+camera.position.set(0, 0, 38);
 
-      world.style.transform = "none";
+const renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
 
-      updateCamera();
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
 
-      planetName.textContent = name;
-      planetName.style.display = "block";
+/* LICHT */
 
-      backButton.style.display = "block";
-      hint.style.display = "none";
-    }
+scene.add(new THREE.AmbientLight(0x8888bb, 2));
+
+const light = new THREE.PointLight(0xffffff, 1000);
+light.position.set(10, 15, 20);
+scene.add(light);
+
+/* STERNE */
+
+const starGeometry = new THREE.BufferGeometry();
+const starPositions = [];
+
+for (let i = 0; i < 1800; i++) {
+  starPositions.push(
+    (Math.random() - 0.5) * 220,
+    (Math.random() - 0.5) * 140,
+    -20 - Math.random() * 120
+  );
+}
+
+starGeometry.setAttribute(
+  "position",
+  new THREE.Float32BufferAttribute(starPositions, 3)
+);
 
-    function goBack() {
-      travelling = false;
+const stars = new THREE.Points(
+  starGeometry,
+  new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.12,
+    transparent: true,
+    opacity: 0.8
+  })
+);
 
-      enableSmoothMovement();
+scene.add(stars);
 
-      zoom = 1;
-      offsetX = 0;
-      offsetY = 0;
+/* PLANETEN */
 
-      updateCamera();
+const planets = [];
 
-      planetName.style.display = "none";
-      backButton.style.display = "none";
-      hint.style.display = "block";
-    }
+function createPlanet(name, color, x, y, size) {
 
-    planets.forEach(planet => {
-      planet.addEventListener("click", event => {
-        if (suppressClick || moved || travelling) {
-          event.preventDefault();
-          return;
-        }
+  const geometry = new THREE.SphereGeometry(
+    size, 64, 64
+  );
 
-        const name = planet.dataset.name;
-        const x = Number(planet.dataset.x);
-        const y = Number(planet.dataset.y);
+  const material = new THREE.MeshStandardMaterial({
+    color: color,
+    roughness: 0.65,
+    metalness: 0.15
+  });
 
-        travel(name, x, y);
-      });
-    });
+  const planet = new THREE.Mesh(geometry, material);
 
-    backButton.addEventListener("click", goBack);
+  planet.position.set(x, y, 0);
+  planet.userData.name = name;
+  planet.userData.size = size;
 
-    universe.addEventListener("pointerdown", event => {
-      if (travelling || event.button !== 0) return;
+  scene.add(planet);
+  planets.push(planet);
 
-      activePointer = event.pointerId;
-      dragging = true;
-      moved = false;
+  /* Atmosphäre */
 
-      startX = event.clientX;
-      startY = event.clientY;
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(size * 1.12, 48, 48),
+    new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.10,
+      depthWrite: false
+    })
+  );
 
-      initialX = offsetX;
-      initialY = offsetY;
+  planet.add(glow);
 
-      camera.style.transition = "none";
-    });
+  return planet;
+}
 
-    window.addEventListener("pointermove", event => {
-      if (
-        dragging &&
-        event.pointerId === activePointer
-      ) {
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
+createPlanet(
+  "Productivity Planet",
+  0x80dfff,
+  -12, 7, 3.2
+);
 
-        if (Math.hypot(dx, dy) > 6) {
-          moved = true;
-          suppressClick = true;
-          universe.classList.add("dragging");
-        }
+createPlanet(
+  "Learning Planet",
+  0x9966ff,
+  0, 10, 3.5
+);
 
-        if (moved) {
-          offsetX = initialX + dx;
-          offsetY = initialY + dy;
+createPlanet(
+  "Creative Planet",
+  0xff78bb,
+  12, 7, 3.1
+);
 
-          updateCamera();
-        }
+createPlanet(
+  "Wellness Planet",
+  0x85d8aa,
+  -12, -7, 3.3
+);
 
-        return;
-      }
+createPlanet(
+  "Life Management Planet",
+  0xe4b786,
+  0, -10, 3.4
+);
 
-      if (travelling || dragging || reducedMotion.matches) {
-        return;
-      }
+createPlanet(
+  "Entertainment Planet",
+  0x5577ff,
+  12, -7, 3.2
+);
 
-      const rect = universe.getBoundingClientRect();
+/* KAMERASTEUERUNG */
 
-      const mouseX =
-        (event.clientX - rect.left) / rect.width - 0.5;
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-      const mouseY =
-        (event.clientY - rect.top) / rect.height - 0.5;
+const targetPosition = new THREE.Vector3(0, 0, 38);
+const targetLookAt = new THREE.Vector3(0, 0, 0);
+const currentLookAt = new THREE.Vector3(0, 0, 0);
 
-      const rotateY = mouseX * 2;
-      const rotateX = -mouseY * 2;
+let selectedPlanet = null;
 
-      world.style.transform =
-        `rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
-    });
+const backButton = document.getElementById("back");
+const planetInfo = document.getElementById("planetInfo");
 
-    function stopDragging(event) {
-      if (
-        !dragging ||
-        event.pointerId !== activePointer
-      ) {
-        return;
-      }
+function selectPlanet(planet) {
 
-      dragging = false;
-      activePointer = null;
+  selectedPlanet = planet;
 
-      universe.classList.remove("dragging");
+  const size = planet.userData.size;
 
-      enableSmoothMovement();
+  targetPosition.set(
+    planet.position.x,
+    planet.position.y,
+    size * 3.4
+  );
 
-      if (moved) {
-        suppressClick = true;
+  targetLookAt.copy(planet.position);
 
-        setTimeout(() => {
-          suppressClick = false;
-          moved = false;
-        }, 100);
-      }
-    }
+  planetInfo.textContent = planet.userData.name;
+  planetInfo.style.display = "block";
+  backButton.style.display = "block";
+}
 
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
+function goBack() {
 
-    universe.addEventListener("wheel", event => {
-      if (travelling) return;
+  selectedPlanet = null;
 
-      event.preventDefault();
+  targetPosition.set(0, 0, 38);
+  targetLookAt.set(0, 0, 0);
 
-      const change = -event.deltaY * 0.001;
+  planetInfo.style.display = "none";
+  backButton.style.display = "none";
+}
 
-      zoom = Math.max(
-        1,
-        Math.min(3, zoom + change)
-      );
+backButton.addEventListener("click", goBack);
 
-      camera.style.transition =
-        "transform .2s ease-out";
+/* PLANETEN ANKLICKEN */
 
-      updateCamera();
-    }, { passive: false });
+renderer.domElement.addEventListener("click", event => {
 
-    updateCamera();
-  </script>
+  if (selectedPlanet) return;
 
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(planets);
+
+  if (intersects.length > 0) {
+    selectPlanet(intersects[0].object);
+  }
+});
+
+/* ZOOM */
+
+renderer.domElement.addEventListener("wheel", event => {
+
+  event.preventDefault();
+
+  if (selectedPlanet) return;
+
+  targetPosition.z += event.deltaY * 0.02;
+
+  targetPosition.z = THREE.MathUtils.clamp(
+    targetPosition.z,
+    25,
+    65
+  );
+
+}, { passive: false });
+
+/* ANIMATION */
+
+const clock = new THREE.Clock();
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  const delta = Math.min(clock.getDelta(), 0.05);
+  const smoothing = 1 - Math.exp(-3 * delta);
+
+  planets.forEach(planet => {
+    planet.rotation.y += delta * 0.12;
+  });
+
+  stars.rotation.y += delta * 0.001;
+
+  camera.position.lerp(targetPosition, smoothing);
+
+  currentLookAt.lerp(targetLookAt, smoothing);
+  camera.lookAt(currentLookAt);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+/* FENSTERGRÖSSE */
+
+window.addEventListener("resize", () => {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+  );
+});
+
+</script>
 </body>
 </html>
